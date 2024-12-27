@@ -211,6 +211,11 @@ impl Player {
                 format!("https://steamcommunity.com/profiles/{}", &self.steamid64),
             );
 
+            ui.hyperlink_to(
+                "Open SteamHistory",
+                format!("https://steamhistory.net/id/{}", &self.steamid64),
+            );
+
             // Other actions button
             if allow_kick
                 || self.player_type == PlayerType::Bot
