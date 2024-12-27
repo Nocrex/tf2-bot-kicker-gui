@@ -5,6 +5,7 @@ use egui::Id;
 use egui_extras::RetainedImage;
 use steam_api::structs::{summaries, friends, bans};
 use wgpu_app::utils::persistent_window::PersistentWindow;
+use crate::steamhistory::{sourcebans, SHBans};
 
 use crate::state::State;
 
@@ -12,12 +13,13 @@ pub struct AccountInfo {
     pub summary: summaries::User,
     pub bans:    bans::User,
     pub friends: Option<Result<Vec<friends::User>, reqwest::Error>>,
+    pub sourcebans: Option<SHBans>,
 }
 
 pub type AccountInfoReceiver = Receiver<(Option<Result<AccountInfo, reqwest::Error>>, Option<RetainedImage>, String)>;
 pub type AccountInfoSender = Sender<(Option<Result<AccountInfo, reqwest::Error>>, Option<RetainedImage>, String)>;
 
-pub fn create_api_thread(key: String) -> (Sender<String>, AccountInfoReceiver) {
+pub fn create_api_thread(key: String, sh_key: String) -> (Sender<String>, AccountInfoReceiver) {
 
     let (request_s, request_r): (Sender<String>, Receiver<String>) = unbounded();
     let (response_s, response_r): (AccountInfoSender, AccountInfoReceiver) = unbounded();
@@ -25,6 +27,7 @@ pub fn create_api_thread(key: String) -> (Sender<String>, AccountInfoReceiver) {
     // Spawn thread to watch requests
     thread::spawn(move || {
         let key = key;
+        let sh_key = sh_key;
 
         thread::scope(|s| {
             loop {
@@ -72,11 +75,31 @@ pub fn create_api_thread(key: String) -> (Sender<String>, AccountInfoReceiver) {
                             } else {
                                 None
                             };
+                            
+                            // SteamHistory
+                            let sourcebans = if !sh_key.is_empty() {
+                                match sourcebans(&[&steamid], &sh_key){
+                                    Ok(mut b) => {
+                                        if b.len() > 0{
+                                            Some(b.drain().next().unwrap().1)
+                                        }else{
+                                            None
+                                        }
+                                    },
+                                    Err(e) => {
+                                        log::warn!("Error while getting Steamhistory bans: {}", e);
+                                        None
+                                    }
+                                }
+                            } else {
+                                None
+                            };
 
                             let info = AccountInfo {
                                 summary,
                                 bans,
                                 friends,
+                                sourcebans,
                             };
 
                             // Profile image
@@ -101,7 +124,7 @@ pub fn create_api_thread(key: String) -> (Sender<String>, AccountInfoReceiver) {
     (request_s, response_r)
 }
 
-pub fn create_set_api_key_window(mut key: String) -> PersistentWindow<State> {
+pub fn create_set_api_key_window(mut key: String, mut sh_key: String) -> PersistentWindow<State> {
     PersistentWindow::new(Box::new(move |id, _, gui_ctx, state| {
         let mut open = true;
         let mut saved = false;
@@ -123,6 +146,10 @@ pub fn create_set_api_key_window(mut key: String) -> PersistentWindow<State> {
                 });
 
                 ui.text_edit_singleline(&mut key);
+                
+                ui.separator();
+                ui.label("Steamhistory API key");
+                ui.text_edit_singleline(&mut sh_key);
 
                 if key.is_empty() {
                     ui.checkbox(&mut state.settings.ignore_no_api_key, "Don't remind me.");
@@ -132,7 +159,8 @@ pub fn create_set_api_key_window(mut key: String) -> PersistentWindow<State> {
                     saved = true;
 
                     state.settings.steamapi_key = key.clone();
-                    (state.steamapi_request_sender, state.steamapi_request_receiver) = create_api_thread(key.clone());
+                    state.settings.steamhistory_key = sh_key.clone();
+                    (state.steamapi_request_sender, state.steamapi_request_receiver) = create_api_thread(key.clone(), sh_key.clone());
 
                     for p in state.server.get_players().values() {
                         state.steamapi_request_sender.send(p.steamid64.clone()).ok();

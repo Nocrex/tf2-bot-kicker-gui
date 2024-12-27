@@ -19,6 +19,7 @@ pub struct Settings {
 
     pub user: String,
     pub steamapi_key: String,
+    pub steamhistory_key: String,
 
     pub announce_bots: bool,
     pub announce_cheaters: bool,
@@ -71,6 +72,7 @@ impl Settings {
 
             user: String::from("U:1:XXXXXXX"),
             steamapi_key: String::new(),
+            steamhistory_key: String::new(),
 
             announce_bots: false,
             announce_cheaters: false,
@@ -138,6 +140,11 @@ impl Settings {
         set.steamapi_key = json["steamapi_key"]
             .as_str()
             .unwrap_or(&set.steamapi_key)
+            .to_string();
+        
+        set.steamhistory_key = json["steamhistory_key"]
+            .as_str()
+            .unwrap_or(&set.steamhistory_key)
             .to_string();
 
         set.announce_bots = json["announce_bots"].as_bool().unwrap_or(set.announce_bots);

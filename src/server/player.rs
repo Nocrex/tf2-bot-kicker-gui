@@ -315,11 +315,22 @@ impl Player {
 
             // VAC and game bans, young account, or couldn't fetch profile
             if let Some(Ok(info)) = &self.account_info {
+                let ban_color = match info.bans.DaysSinceLastBan {
+                    (0..=90) => Color32::RED,
+                    (91..=400) => ORANGE,
+                    (401..=800) => Color32::YELLOW,
+                    _ => Color32::WHITE,
+                };
                 if info.bans.VACBanned {
-                    ui.label(RichText::new("V").color(Color32::RED));
+                    ui.label(RichText::new("V").color(ban_color));
                 }
                 if info.bans.NumberOfGameBans > 0 {
-                    ui.label(RichText::new("G").color(Color32::RED));
+                    ui.label(RichText::new("G").color(ban_color));
+                }
+                if let Some(sbans) = &info.sourcebans {
+                    if sbans.bans.len() > 0 {
+                        ui.label(RichText::new("S").color(sbans.color));
+                    }
                 }
                 if let Some(time) = info.summary.timecreated {
                     let age = Utc::now()
@@ -361,6 +372,7 @@ impl Player {
                         summary,
                         bans,
                         friends: _,
+                        sourcebans,
                     } = info;
 
                     ui.horizontal(|ui| {
@@ -436,6 +448,28 @@ impl Player {
                                     ))
                                     .color(Color32::RED),
                                 );
+                            }
+                            
+                            if let Some(sbans) = sourcebans {
+                                if !sbans.bans.is_empty(){
+                                    ui.label(RichText::new("This player has bans on SteamHistory:").color(sbans.color));
+                                    for ban in &sbans.bans{
+                                        let dur = Utc::now().naive_local()
+                                            .signed_duration_since(NaiveDateTime::from_timestamp_opt(ban.BanTimestamp as i64, 0).unwrap());
+
+                                        ui.label(
+                                            RichText::new(
+                                                format!(
+                                                    "- {} ({} | {} days ago): {}", 
+                                                    ban.Server, 
+                                                    ban.CurrentState,
+                                                    dur.num_days(),
+                                                    ban.BanReason.as_ref().unwrap_or(&"".to_string()),
+                                                )
+                                            ).color(sbans.color)
+                                        );
+                                    }
+                                }
                             }
 
                             if let Some(c) = party_color {
