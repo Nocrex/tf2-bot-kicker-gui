@@ -10,6 +10,7 @@ use regex::Regex;
 use serde::Serialize;
 use serde_json::Value;
 
+use crate::player::steamid_64_to_32;
 use crate::server::player::{PlayerType, Steamid32};
 
 use super::player::Player;
@@ -82,9 +83,10 @@ impl PlayerChecker {
         as_player_type: PlayerType,
     ) -> Result<(), std::io::Error> {
         let reg = Regex::new(r#"\[?(?P<uuid>U:\d:\d+)\]?"#).unwrap();
+        let reg64 = Regex::new(r#"7656\d{13}"#).unwrap();
 
         let mut file = File::open(filename)?;
-
+        
         let mut contents: String = String::new();
         file.read_to_string(&mut contents)?;
 
@@ -106,6 +108,22 @@ impl PlayerChecker {
                     }
                 }
             }
+        }
+
+        for m in reg64.find_iter(&contents){
+            let steamid = steamid_64_to_32(&m.as_str().to_owned());
+
+            if steamid.is_err() || self.players.contains_key(steamid.as_ref().unwrap())  {
+                continue;
+            }
+
+            let record = PlayerRecord{
+                steamid: steamid.unwrap(),
+                player_type: as_player_type,
+                notes: format!("Imported from {} as {:?}", filename, as_player_type),
+            };
+
+            self.players.insert(record.steamid.clone(), record);
         }
 
         Ok(())
