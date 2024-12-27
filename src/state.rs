@@ -118,7 +118,7 @@ impl State {
         }
 
         let (steamapi_request_sender, steamapi_request_receiver) =
-            steamapi::create_api_thread(settings.steamapi_key.clone());
+            steamapi::create_api_thread(settings.steamapi_key.clone(), settings.steamhistory_key.clone());
 
         let server = Server::new();
         let io = IOManager::start(&settings);

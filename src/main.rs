@@ -16,6 +16,7 @@ pub mod state;
 pub mod steamapi;
 pub mod timer;
 pub mod version;
+pub mod steamhistory;
 
 use chrono::{DateTime, Local};
 use crossbeam_channel::TryRecvError;
@@ -108,7 +109,7 @@ impl wgpu_app::Application for TF2BotKicker {
         self.state.latest_version = Some(VersionResponse::request_latest_version());
         if !self.state.settings.ignore_no_api_key && self.state.settings.steamapi_key.is_empty() {
             self.windows
-                .push(steamapi::create_set_api_key_window(String::new()));
+                .push(steamapi::create_set_api_key_window(String::new(), String::new()));
         }
 
         // Try to run TF2 if set to

@@ -1,7 +1,7 @@
 use std::{fmt::Display, ops::RangeInclusive};
 
 use clipboard::{ClipboardContext, ClipboardProvider};
-use egui::{gui_zoom, Color32, Id, Label, RichText, Separator, Ui};
+use egui::{Color32, Id, Label, RichText, Separator, Ui};
 use egui_dock::Tree;
 use serde::{Deserialize, Serialize};
 use wgpu_app::utils::persistent_window::PersistentWindow;
@@ -175,6 +175,7 @@ pub fn render_top_panel(gui_ctx: &egui::Context, state: &mut State, gui_tree: &m
                     .new_persistent_windows
                     .push(steamapi::create_set_api_key_window(
                         state.settings.steamapi_key.clone(),
+                        state.settings.steamhistory_key.clone(),
                     ));
             }
         });
