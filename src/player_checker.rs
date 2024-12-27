@@ -17,6 +17,7 @@ use super::player::Player;
 
 pub const REGEX_LIST: &str = "cfg/regx.txt";
 pub const PLAYER_LIST: &str = "cfg/playerlist.json";
+pub const HACKERPOLICE_LIST: &str = "https://raw.githubusercontent.com/AveraFox/Tom/refs/heads/main/reported_ids.txt";
 
 #[derive(Debug, Serialize, Clone)]
 pub struct PlayerRecord {
@@ -82,14 +83,26 @@ impl PlayerChecker {
         filename: &str,
         as_player_type: PlayerType,
     ) -> Result<(), std::io::Error> {
-        let reg = Regex::new(r#"\[?(?P<uuid>U:\d:\d+)\]?"#).unwrap();
-        let reg64 = Regex::new(r#"7656\d{13}"#).unwrap();
+        
 
         let mut file = File::open(filename)?;
         
         let mut contents: String = String::new();
         file.read_to_string(&mut contents)?;
 
+        self.read_from_steamid_list_string(&contents, as_player_type, filename);
+
+        Ok(())
+    }
+
+    pub fn read_from_steamid_list_string(
+        &mut self,
+        contents: &str,
+        as_player_type: PlayerType,
+        filename: &str
+    ) {
+        let reg = Regex::new(r#"\[?(?P<uuid>U:\d:\d+)\]?"#).unwrap();
+        let reg64 = Regex::new(r#"7656\d{13}"#).unwrap();
         for m in reg.find_iter(&contents) {
             match reg.captures(m.as_str()) {
                 None => {}
@@ -125,8 +138,6 @@ impl PlayerChecker {
 
             self.players.insert(record.steamid.clone(), record);
         }
-
-        Ok(())
     }
 
     /// Read a list of regexes to match bots against from a file

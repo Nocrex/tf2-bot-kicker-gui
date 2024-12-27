@@ -10,7 +10,7 @@ use crate::{
         regexes::{ChatMessage, LobbyLine, PlayerKill, StatusLine},
         IOManager, IORequest, IOResponse,
     },
-    player_checker::{PlayerChecker, PLAYER_LIST, REGEX_LIST},
+    player_checker::{PlayerChecker, HACKERPOLICE_LIST, PLAYER_LIST, REGEX_LIST},
     server::{
         player::{steamid_32_to_64, Player, PlayerType, Team},
         Server,
@@ -107,6 +107,14 @@ impl State {
             Err(e) => {
                 log::error!("{}", format!("Error loading {}: {}", REGEX_LIST, e));
             }
+        }
+
+        match reqwest::blocking::get(HACKERPOLICE_LIST).and_then(|r|r.text()){
+            Ok(ids) => {
+                player_checker.read_from_steamid_list_string(&ids, PlayerType::Cheater, &format!("hackerpolice list ({0})", chrono::Local::now().to_rfc3339()));
+                log::info!("Successfully loaded hackerpolice list.");
+            }
+            Err(e) => log::warn!("Failed loading hackerpolice list, {e}")
         }
 
         let (steamapi_request_sender, steamapi_request_receiver) =
