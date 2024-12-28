@@ -179,6 +179,7 @@ impl LobbyLine {
     }
 }
 
+#[allow(dead_code)]
 const INVIS_CHARS: &[char] = &[
     '\u{00a0}',
     '\u{00ad}',

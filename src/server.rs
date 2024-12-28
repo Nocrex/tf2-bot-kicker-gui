@@ -185,21 +185,29 @@ impl Server {
     /// Remove players who aren't present on the server anymore
     /// (This method will be called automatically in a rexes command)
     pub fn prune(&mut self) {
-        'outer: for (_, p) in self.players.extract_if(|_, v| {
-            if v.accounted > ACCOUNTED_LIMIT && v.player_type == PlayerType::Bot {
-                log::info!("Bot disconnected: {}", v.name);
-            }
-            if v.accounted > ACCOUNTED_LIMIT {
-                log::debug!("Player Pruned: {}", v.name);
-            }
-
-            v.accounted > ACCOUNTED_LIMIT
-        }) {
-            log::info!("Pruning player {}", &p.name);
-            for prev in self.previous_players.inner() {
-                if p.steamid32 == prev.steamid32 {
-                    continue 'outer;
+        let removed: Vec<String> = self
+            .players
+            .iter()
+            .filter(|(_, v)| {
+                if v.accounted > ACCOUNTED_LIMIT && v.player_type == PlayerType::Bot {
+                    log::info!("Bot disconnected: {}", v.name);
                 }
+                if v.accounted > ACCOUNTED_LIMIT {
+                    log::debug!("Player Pruned: {}", v.name);
+                }
+                v.accounted > ACCOUNTED_LIMIT
+            })
+            .map(|(k, _)| k.clone())
+            .collect();
+        for p in removed.iter().map(|k| self.players.remove(k).unwrap()) {
+            log::info!("Pruning player {}", &p.name);
+            if self
+                .previous_players
+                .inner()
+                .iter()
+                .any(|prev| p.steamid32 == prev.steamid32)
+            {
+                continue;
             }
             self.previous_players.push(p);
         }

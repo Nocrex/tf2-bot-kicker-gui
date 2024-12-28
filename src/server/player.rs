@@ -336,9 +336,9 @@ impl Player {
                     }
                 }
                 if let Some(time) = info.summary.timecreated {
-                    let age = Utc::now()
-                        .naive_local()
-                        .signed_duration_since(NaiveDateTime::from_timestamp(time as i64, 0));
+                    let age = Utc::now().naive_local().signed_duration_since(
+                        NaiveDateTime::from_timestamp_opt(time as i64, 0).unwrap(),
+                    );
                     if age.num_days() < (70) {
                         ui.label(RichText::new("Y").color(Color32::RED));
                     } else if age.num_days() < (365) {
@@ -398,7 +398,7 @@ impl Player {
 
                             if let Some(time) = summary.timecreated {
                                 let age = Utc::now().naive_local().signed_duration_since(
-                                    NaiveDateTime::from_timestamp(time as i64, 0),
+                                    NaiveDateTime::from_timestamp_opt(time as i64, 0).unwrap(),
                                 );
                                 let years = age.num_days() / 365;
                                 let days = age.num_days() - years * 365;
