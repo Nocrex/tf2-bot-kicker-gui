@@ -116,7 +116,7 @@ impl Player {
         user: &str,
         allow_kick: bool,
         allow_steamapi: bool,
-        party_color: Option<Color32>,
+        party_indicator: Option<(char, Color32)>,
     ) -> Option<UserAction> {
         static mut CONTEXT_MENU_OPEN: Option<String> = None;
 
@@ -273,14 +273,14 @@ impl Player {
         // information to show (i.e. notes or stolen name notification)
         if (allow_steamapi || !self.notes.is_empty() || self.stolen_name) && !menu_open {
             header.response.on_hover_ui(|ui| {
-                self.render_account_info(ui, party_color);
+                self.render_account_info(ui, party_indicator);
                 self.render_notes(ui);
             });
         }
 
         // Party Indicator
-        if let Some(col_party) = party_color {
-            ui.label(RichText::new("■").color(col_party));
+        if let Some((indicator, col_party)) = party_indicator {
+            ui.label(RichText::new(indicator).color(col_party));
         }
 
         if let Some(Ok(ac_inf)) = &self.account_info {
@@ -367,7 +367,7 @@ impl Player {
     }
 
     /// Renders a view of the player's steam account info
-    pub fn render_account_info(&self, ui: &mut Ui, party_color: Option<Color32>) {
+    pub fn render_account_info(&self, ui: &mut Ui, party_indicator: Option<(char, Color32)>) {
         if let Some(info_request) = &self.account_info {
             match info_request {
                 Ok(info) => {
@@ -502,10 +502,12 @@ impl Player {
                                 }
                             }
 
-                            if let Some(c) = party_color {
+                            if let Some((indicator, color)) = party_indicator {
                                 ui.label(
-                                    RichText::new("■ This player has friends in the server")
-                                        .color(c),
+                                    RichText::new(format!(
+                                        "{indicator} This player has friends in the server"
+                                    ))
+                                    .color(color),
                                 );
                             }
                         });
