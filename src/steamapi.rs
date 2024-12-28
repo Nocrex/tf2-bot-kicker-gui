@@ -3,6 +3,7 @@ use std::thread;
 use crossbeam_channel::{Sender, Receiver, unbounded};
 use egui::Id;
 use egui_extras::RetainedImage;
+use serde::Deserialize;
 use steam_api::structs::{summaries, friends, bans};
 use wgpu_app::utils::persistent_window::PersistentWindow;
 use crate::steamhistory::{sourcebans, SHBans};
@@ -14,6 +15,7 @@ pub struct AccountInfo {
     pub bans:    bans::User,
     pub friends: Option<Result<Vec<friends::User>, reqwest::Error>>,
     pub sourcebans: Option<SHBans>,
+    pub playtime: Option<Playtime>,
 }
 
 pub type AccountInfoReceiver = Receiver<(Option<Result<AccountInfo, reqwest::Error>>, Option<RetainedImage>, String)>;
@@ -94,12 +96,15 @@ pub fn create_api_thread(key: String, sh_key: String) -> (Sender<String>, Accoun
                             } else {
                                 None
                             };
+                            
+                            let playtime = get_playtime(&steamid, &key);
 
                             let info = AccountInfo {
                                 summary,
                                 bans,
                                 friends,
                                 sourcebans,
+                                playtime
                             };
 
                             // Profile image
@@ -170,4 +175,41 @@ pub fn create_set_api_key_window(mut key: String, mut sh_key: String) -> Persist
 
         open && !saved
     }))
+}
+
+pub struct Playtime{
+    pub all_time: u64,
+    pub last_2_weeks: u64,
+}
+
+fn get_playtime(steamid: &str, key: &str) -> Option<Playtime> {
+    const API_URL: &str = "http://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/";
+    #[derive(Deserialize)]
+    struct Response{
+        response: Body,
+    }
+    #[derive(Deserialize)]
+    struct Body{
+        games: Vec<GameInfo>,
+    }
+    #[derive(Deserialize)]
+    struct GameInfo{
+        appid: u32,
+        playtime_2weeks: u64,
+        playtime_forever: u64,
+    }
+    
+
+    let res = reqwest::blocking::get(format!("{API_URL}?key={key}&steamid={steamid}&format=json")).and_then(|res|res.json::<Response>());
+    
+    res.inspect_err(|e|{
+        log::warn!("Steam playtime lookup failed: {}", e);
+    }).map(|response|{
+        response.response.games.iter()
+            .find(|g| g.appid == 440)
+            .map(|g|Playtime{
+                all_time:g.playtime_forever, 
+                last_2_weeks: g.playtime_2weeks
+            })
+    }).ok().and_then(|o|o)
 }

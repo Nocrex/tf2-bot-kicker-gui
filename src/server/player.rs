@@ -284,18 +284,16 @@ impl Player {
         }
 
         if let Some(res) = &self.account_info {
-            if let Ok(ac_inf) = &res{
-                if let Some(res_f) = &ac_inf.friends{
-                    if let Ok(friends) = &res_f{
+            if let Ok(ac_inf) = &res {
+                if let Some(res_f) = &ac_inf.friends {
+                    if let Ok(friends) = &res_f {
                         if friends.len() == 0 {
                             ui.label(RichText::new("0").color(Color32::LIGHT_YELLOW));
                         }
-                    }
-                    else {
+                    } else {
                         ui.label(RichText::new("0").color(Color32::YELLOW));
                     }
-                }
-                else {
+                } else {
                     ui.label(RichText::new("0").color(Color32::LIGHT_RED));
                 }
             }
@@ -332,6 +330,13 @@ impl Player {
                         ui.label(RichText::new("S").color(sbans.color));
                     }
                 }
+                if let Some(pt) = &info.playtime {
+                    if matches!(pt.all_time / 60, (0..100)) {
+                        ui.label(RichText::new("Y").color(Color32::GREEN));
+                    } else if matches!(pt.all_time / 60, (100..250)) {
+                        ui.label(RichText::new("Y").color(Color32::LIGHT_GREEN));
+                    }
+                }
                 if let Some(time) = info.summary.timecreated {
                     let age = Utc::now()
                         .naive_local()
@@ -343,7 +348,7 @@ impl Player {
                     }
                 }
                 if info.summary.communityvisibilitystate == 1 {
-                    ui.label(RichText::new("P").color(Color32::RED));
+                    ui.label(RichText::new("P").color(Color32::YELLOW));
                 } else if info.summary.communityvisibilitystate == 2 {
                     ui.label(RichText::new("F").color(Color32::YELLOW));
                 }
@@ -373,6 +378,7 @@ impl Player {
                         bans,
                         friends: _,
                         sourcebans,
+                        playtime,
                     } = info;
 
                     ui.horizontal(|ui| {
@@ -420,6 +426,16 @@ impl Player {
                                 }
                             }
 
+                            if let Some(playtime) = playtime {
+                                ui.label(format!(
+                                    "{} hours played, {} last two weeks",
+                                    playtime.all_time / 60,
+                                    playtime.last_2_weeks / 60,
+                                ));
+                            } else {
+                                ui.label("Could not get playtime");
+                            }
+
                             if bans.VACBanned {
                                 ui.label(
                                     RichText::new(format!(
@@ -449,24 +465,31 @@ impl Player {
                                     .color(Color32::RED),
                                 );
                             }
-                            
+
                             if let Some(sbans) = sourcebans {
-                                if !sbans.bans.is_empty(){
-                                    ui.label(RichText::new("This player has bans on SteamHistory:").color(sbans.color));
-                                    for ban in &sbans.bans{
-                                        let dur = Utc::now().naive_local()
-                                            .signed_duration_since(NaiveDateTime::from_timestamp_opt(ban.BanTimestamp as i64, 0).unwrap());
+                                if !sbans.bans.is_empty() {
+                                    ui.label(
+                                        RichText::new("This player has bans on SteamHistory:")
+                                            .color(sbans.color),
+                                    );
+                                    for ban in &sbans.bans {
+                                        let dur = Utc::now().naive_local().signed_duration_since(
+                                            NaiveDateTime::from_timestamp_opt(
+                                                ban.BanTimestamp as i64,
+                                                0,
+                                            )
+                                            .unwrap(),
+                                        );
 
                                         ui.label(
-                                            RichText::new(
-                                                format!(
-                                                    "- {} ({} | {} days ago): {}", 
-                                                    ban.Server, 
-                                                    ban.CurrentState,
-                                                    dur.num_days(),
-                                                    ban.BanReason.as_ref().unwrap_or(&"".to_string()),
-                                                )
-                                            ).color(sbans.color)
+                                            RichText::new(format!(
+                                                "- {} ({} | {} days ago): {}",
+                                                ban.Server,
+                                                ban.CurrentState,
+                                                dur.num_days(),
+                                                ban.BanReason.as_ref().unwrap_or(&"".to_string()),
+                                            ))
+                                            .color(sbans.color),
                                         );
                                     }
                                 }
@@ -475,7 +498,7 @@ impl Player {
                             if let Some(c) = party_color {
                                 ui.label(
                                     RichText::new("■ This player has friends in the server")
-                                    .color(c),
+                                        .color(c),
                                 );
                             }
                         });
