@@ -36,7 +36,7 @@ pub struct Server {
     pub new_connections: Vec<String>,
     pub pending_lookup: Vec<String>,
     previous_players: RingBuffer<Player>,
-    parties: Parties,
+    pub parties: Parties,
 }
 
 impl Server {
@@ -75,10 +75,6 @@ impl Server {
 
     pub fn get_previous_players(&self) -> &RingBuffer<Player> {
         &self.previous_players
-    }
-
-    pub fn get_player_party_color(&self, p: &Player) -> Option<egui::Color32> {
-        self.parties.get_player_party_color(p)
     }
 
     pub fn get_player_mut(&mut self, steamid: &Steamid32) -> Option<&mut Player> {
