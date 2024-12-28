@@ -2,9 +2,7 @@
   <img src="images/logo_smol.png">
 </p>
 
-# This project is no longer maintained and has been superceeded by [TF2 Monitor](https://github.com/Bash-09/TF2-Monitor)
-
-# TF2 Bot Kicker by Bash
+# TF2 Bot Kicker by Bash, Nocrex's personal fork
 
 A (somewhat) cross-platform bot identifier/kicker written in Rust.
 
@@ -12,9 +10,17 @@ A (somewhat) cross-platform bot identifier/kicker written in Rust.
 
 # Preface
 
-This project is no longer maintained. It still functions as intended and is a great alternative to TF2BD, however a lot of the later features were never published in a release so I recommend building the application yourself for the best experience.
+This fork is a hacky version of the original with some additional features that I personally wanted. It's not really intended for general use and I can't guarantee everything will work.
+So if you really want to use it, go for it, but your mileage may vary.
 
-I'm currently working on the [MAC Client](https://github.com/MegaAntiCheat/client-backend) instead which will eventually offer most of the functionality of this project (though not all) with some additional benefits.
+New features:
+- context menu entry to open a player's SteamHistory.net page
+- importing Steamid64 lists
+- automatic import of the cheaters from https://github.com/AveraFox/Tom on launch
+- SteamHistory.net integration to show sourcebans
+- TF2 playtime display for each player
+
+If you want something similar that is intended for general use, check out Bash's [TF2 Monitor](https://github.com/Bash-09/TF2-Monitor).
 
 # What it does
 
