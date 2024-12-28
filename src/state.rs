@@ -109,16 +109,22 @@ impl State {
             }
         }
 
-        match reqwest::blocking::get(HACKERPOLICE_LIST).and_then(|r|r.text()){
+        match reqwest::blocking::get(HACKERPOLICE_LIST).and_then(|r| r.text()) {
             Ok(ids) => {
-                player_checker.read_from_steamid_list_string(&ids, PlayerType::Cheater, &format!("hackerpolice list ({0})", chrono::Local::now().to_rfc3339()));
+                player_checker.read_from_steamid_list_string(
+                    &ids,
+                    PlayerType::Cheater,
+                    &format!("hackerpolice list ({0})", chrono::Local::now().to_rfc3339()),
+                );
                 log::info!("Successfully loaded hackerpolice list.");
             }
-            Err(e) => log::warn!("Failed loading hackerpolice list, {e}")
+            Err(e) => log::warn!("Failed loading hackerpolice list, {e}"),
         }
 
-        let (steamapi_request_sender, steamapi_request_receiver) =
-            steamapi::create_api_thread(settings.steamapi_key.clone(), settings.steamhistory_key.clone());
+        let (steamapi_request_sender, steamapi_request_receiver) = steamapi::create_api_thread(
+            settings.steamapi_key.clone(),
+            settings.steamhistory_key.clone(),
+        );
 
         let server = Server::new();
         let io = IOManager::start(&settings);
