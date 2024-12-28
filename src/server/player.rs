@@ -427,11 +427,20 @@ impl Player {
                             }
 
                             if let Some(playtime) = playtime {
-                                ui.label(format!(
-                                    "{} hours played, {} last two weeks",
-                                    playtime.all_time / 60,
-                                    playtime.last_2_weeks / 60,
-                                ));
+                                ui.label(
+                                    RichText::new(format!(
+                                        "{} hrs, {} hrs last two weeks",
+                                        playtime.all_time / 60,
+                                        playtime.last_2_weeks / 60,
+                                    ))
+                                    .color(
+                                        match playtime.all_time {
+                                            (0..100) => Color32::GREEN,
+                                            (100..250) => Color32::LIGHT_GREEN,
+                                            _ => Color32::WHITE,
+                                        },
+                                    ),
+                                );
                             } else {
                                 ui.label("Could not get playtime");
                             }
