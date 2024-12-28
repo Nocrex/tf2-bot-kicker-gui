@@ -283,19 +283,17 @@ impl Player {
             ui.label(RichText::new("■").color(col_party));
         }
 
-        if let Some(res) = &self.account_info {
-            if let Ok(ac_inf) = &res {
-                if let Some(res_f) = &ac_inf.friends {
-                    if let Ok(friends) = &res_f {
-                        if friends.len() == 0 {
-                            ui.label(RichText::new("0").color(Color32::LIGHT_YELLOW));
-                        }
-                    } else {
-                        ui.label(RichText::new("0").color(Color32::YELLOW));
+        if let Some(Ok(ac_inf)) = &self.account_info {
+            if let Some(res_f) = &ac_inf.friends {
+                if let Ok(friends) = &res_f {
+                    if friends.len() == 0 {
+                        ui.label(RichText::new("0").color(Color32::LIGHT_BLUE));
                     }
                 } else {
-                    ui.label(RichText::new("0").color(Color32::LIGHT_RED));
+                    ui.label(RichText::new("0").color(Color32::YELLOW));
                 }
+            } else {
+                ui.label(RichText::new("0").color(Color32::LIGHT_RED));
             }
         }
 
