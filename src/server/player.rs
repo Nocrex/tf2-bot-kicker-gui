@@ -435,7 +435,7 @@ impl Player {
                                         match playtime.all_time {
                                             (0..100) => Color32::GREEN,
                                             (100..250) => Color32::LIGHT_GREEN,
-                                            _ => Color32::WHITE,
+                                            _ => Color32::GRAY,
                                         },
                                     ),
                                 );

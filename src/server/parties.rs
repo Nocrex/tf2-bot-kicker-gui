@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 
 use crate::player::{steamid_64_to_32, Player, Steamid32};
 
@@ -32,43 +32,55 @@ const INDICATOR_SYMBOLS: [char; 4] = ['■', '★', '▲', '◆'];
 /// Structure used to determine which players in the current server are friends
 pub struct Parties {
     players: Vec<Steamid32>,
-    friend_connections: HashMap<Steamid32, HashSet<Steamid32>>,
 
     parties: Vec<HashSet<Steamid32>>,
+
+    pub graph: petgraph::Graph<String, (), petgraph::Directed>,
 }
 
 impl Parties {
     pub fn new() -> Parties {
         Parties {
             players: Vec::new(),
-            friend_connections: HashMap::new(),
             parties: Vec::new(),
+            graph: petgraph::stable_graph::StableDiGraph::new(),
         }
     }
 
     pub fn clear(&mut self) {
         self.players.clear();
-        self.friend_connections.clear();
         self.parties.clear();
+        self.graph.clear();
     }
 
     /// Updates the internal graph of players
     pub fn update(&mut self, player_map: &HashMap<Steamid32, Player>) {
         // Copy over the players
-        self.players.clear();
-        for p in player_map.keys() {
-            self.players.push(p.clone());
+        self.players = player_map.keys().cloned().collect();
+        self.graph.clear();
+
+        for p in &self.players {
+            self.graph.add_node(p.clone());
         }
 
-        self.friend_connections.clear();
-        // Get friends of each player and add them to the connection map
+        // Get friends of each player and add them to the graph
         for p in player_map.values() {
             if let Some(Ok(acif)) = &p.account_info {
                 if let Some(Ok(friends)) = &acif.friends {
+                    let node_ind = self
+                        .graph
+                        .node_indices()
+                        .find(|ind| self.graph[*ind] == p.steamid32)
+                        .unwrap();
                     for f in friends {
                         let id = steamid_64_to_32(&f.steamid).unwrap();
                         if self.players.contains(&id) {
-                            self.add_friend(&p.steamid32, &id);
+                            let friend_ind = self
+                                .graph
+                                .node_indices()
+                                .find(|ind| self.graph[*ind] == id)
+                                .unwrap();
+                            self.graph.update_edge(node_ind, friend_ind, ());
                         }
                     }
                 }
@@ -92,54 +104,30 @@ impl Parties {
 
     /// Determines the connected components of the player graph (aka. the friend groups)
     fn find_parties(&mut self) {
-        self.parties.clear();
         if self.players.is_empty() {
+            self.parties.clear();
             return;
         }
-
-        let mut remaining_players = self.players.clone(); // Vec to keep track of unhandled players
-        let mut queue: VecDeque<Steamid32> = VecDeque::new(); // Queue for processing connected players
-
-        // Perform a BFS over the graph to find the components and save them as parties
-        while !remaining_players.is_empty() {
-            // Start a new party and add an unhandled player to the queue
-            queue.push_back(remaining_players.first().unwrap().clone());
-            let mut party: HashSet<Steamid32> = HashSet::new();
-
-            while !queue.is_empty() {
-                let p = queue.pop_front().unwrap();
-                party.insert(p.clone());
-                remaining_players.retain(|rp| *rp != p);
-
-                if let Some(friends) = self.friend_connections.get(&p) {
-                    // Only push players not in the party into the queue
-                    friends
-                        .iter()
-                        .filter(|f| !party.contains(*f))
-                        .for_each(|f| queue.push_back(f.clone()));
-                }
-            }
-            // Solo players are not in a party
-            if party.len() > 1 {
-                self.parties.push(party);
-            }
+        // TODO: replace with UndirectedAdapter when it gets released
+        let mut undir_graph = petgraph::Graph::new_undirected();
+        let mut node_map: HashMap<petgraph::graph::NodeIndex, petgraph::graph::NodeIndex> =
+            HashMap::new();
+        for node in self.graph.node_indices() {
+            node_map.insert(
+                node,
+                undir_graph.add_node(self.graph.node_weight(node).unwrap()),
+            );
         }
-    }
-
-    /// Utility function to add bidirectional friend connections, so private accounts can also be accounted for as long as one of their friends has a public account
-    fn add_friend(&mut self, user: &String, friend: &String) {
-        if let Some(set) = self.friend_connections.get_mut(user) {
-            set.insert(friend.clone());
-        } else {
-            self.friend_connections
-                .insert(user.clone(), HashSet::from([friend.clone()]));
+        for edge in self.graph.edge_indices() {
+            let (src, target) = self.graph.edge_endpoints(edge).unwrap();
+            undir_graph.update_edge(node_map[&src], node_map[&target], ());
         }
-
-        if let Some(set) = self.friend_connections.get_mut(friend) {
-            set.insert(user.clone());
-        } else {
-            self.friend_connections
-                .insert(friend.clone(), HashSet::from([user.clone()]));
-        }
+        let party_graph = petgraph::algo::condensation(undir_graph, true);
+        assert_eq!(party_graph.edge_count(), 0);
+        self.parties = party_graph
+            .node_weights()
+            .map(|party| HashSet::from_iter(party.iter().cloned().cloned()))
+            .filter(|party| party.len() > 1)
+            .collect();
     }
 }
