@@ -19,6 +19,7 @@ New features:
 - automatic import of the cheaters from https://github.com/AveraFox/Tom on launch
 - SteamHistory.net integration to show sourcebans
 - TF2 playtime display for each player
+- Does not require rust nightly
 
 If you want something similar that is intended for general use, check out Bash's [TF2 Monitor](https://github.com/Bash-09/TF2-Monitor).
 
@@ -29,9 +30,6 @@ This is a program you run alongside TF2 while you play which automatically attem
 This program operates using features already included in the Source engine as intended, no cheats required (so no VAC bans!).
 
 # Usage
-
-Download the program from [here](https://github.com/Googe14/tf2-bot-kicker-gui/releases).
-
 
 1. Add the following 3 lines to your TF2 autoexec.cfg (You can choose anything for the rcon_password, you will just have to set it when you start the program)
 
@@ -49,8 +47,6 @@ Next time you play TF2 you will just need to start the program and it will do ev
 # Building
 
 Install Rust: https://www.rust-lang.org/tools/install
-
-May need to enable rust nightly: `rustup default nightly`
 
 On Linux some packages will need to be installed (commands are provided for Ubuntu, other distros will have to figure out how to install the equivalent packages):
 ```
