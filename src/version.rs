@@ -1,8 +1,8 @@
 use std::error::Error;
 
+use crate::gui::persistent_window::PersistentWindow;
 use egui::{Align2, Id, Vec2};
 use serde_json::Value;
-use wgpu_app::utils::persistent_window::PersistentWindow;
 
 use crate::state::State;
 

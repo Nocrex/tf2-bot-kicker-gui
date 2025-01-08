@@ -4,7 +4,6 @@ use clipboard::{ClipboardContext, ClipboardProvider};
 use egui::{Color32, Id, Label, RichText, Separator, Ui};
 use egui_dock::Tree;
 use serde::{Deserialize, Serialize};
-use wgpu_app::utils::persistent_window::PersistentWindow;
 
 use crate::{
     io::{command_manager::CommandManager, IORequest},
@@ -22,8 +21,10 @@ use self::{
 };
 
 pub mod chat_window;
+pub mod persistent_window;
 pub mod player_windows;
 pub mod regex_windows;
+use persistent_window::PersistentWindow;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize)]
 pub enum GuiTab {
@@ -31,6 +32,7 @@ pub enum GuiTab {
     Players,
     ChatLog,
     DeathLog,
+    FriendGraph,
 }
 
 impl Display for GuiTab {
@@ -40,6 +42,7 @@ impl Display for GuiTab {
             GuiTab::Players => "Players",
             GuiTab::ChatLog => "Chat",
             GuiTab::DeathLog => "Death Log",
+            GuiTab::FriendGraph => "Friend Graph",
         })
     }
 }
@@ -71,6 +74,7 @@ pub fn render_top_panel(gui_ctx: &egui::Context, state: &mut State, gui_tree: &m
                     GuiTab::Players,
                     GuiTab::ChatLog,
                     GuiTab::DeathLog,
+                    GuiTab::FriendGraph,
                 ] {
                     let open_tab = gui_tree.find_tab(tab);
                     if ui
@@ -202,7 +206,7 @@ pub fn render_settings(ui: &mut Ui, state: &mut State) {
             ui.add(
                 egui::DragValue::new(&mut state.settings.refresh_period)
                     .speed(0.1)
-                    .clamp_range(RangeInclusive::new(0.5, 60.0)),
+                    .range(RangeInclusive::new(0.5, 60.0)),
             );
             ui.label("Refresh Period").on_hover_text("Time between refreshing the server information.");
         });
@@ -221,7 +225,7 @@ pub fn render_settings(ui: &mut Ui, state: &mut State) {
             ui.add_enabled(state.settings.kick_bots || state.settings.kick_cheaters,
                 egui::DragValue::new(&mut state.settings.kick_period)
                     .speed(0.1)
-                    .clamp_range(RangeInclusive::new(0.5, 60.0)),
+                    .range(RangeInclusive::new(0.5, 60.0)),
             );
             ui.add_enabled(state.settings.kick_bots || state.settings.kick_cheaters,
             Label::new("Kick Period")).on_hover_text("Time between attempting to kick bots or cheaters.");
@@ -239,7 +243,7 @@ pub fn render_settings(ui: &mut Ui, state: &mut State) {
             ui.add_enabled(state.settings.announce_bots || state.settings.announce_cheaters,
                 egui::DragValue::new(&mut state.settings.alert_period)
                     .speed(0.1)
-                    .clamp_range(RangeInclusive::new(0.5, 60.0)),
+                    .range(RangeInclusive::new(0.5, 60.0)),
             );
             ui.add_enabled(state.settings.announce_bots || state.settings.announce_cheaters,
                 Label::new("Chat Message Period")).on_hover_text("Time between sending chat messages.");
@@ -622,4 +626,12 @@ fn create_dialog_box(title: String, text: String) -> PersistentWindow<State> {
 
         open
     }))
+}
+
+pub fn render_friends_graph(ui: &mut Ui, state: &mut State) {
+    ui.add(
+        &mut egui_graphs::GraphView::new(&mut state.friends_graph).with_navigations(
+            &egui_graphs::SettingsNavigation::new().with_zoom_and_pan_enabled(true),
+        ),
+    );
 }

@@ -1,6 +1,6 @@
+use crate::gui::persistent_window::PersistentWindow;
 use egui::Id;
 use regex::Regex;
-use wgpu_app::utils::persistent_window::PersistentWindow;
 
 use crate::state::State;
 

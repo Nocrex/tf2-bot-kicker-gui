@@ -1,11 +1,11 @@
 use core::fmt;
 
-use chrono::{NaiveDateTime, Utc};
+use crate::gui::persistent_window::PersistentWindow;
+use chrono::{DateTime, Utc};
 use clipboard::{ClipboardContext, ClipboardProvider};
 use egui::{Color32, Label, RichText, Ui, Vec2};
 use egui_extras::RetainedImage;
 use serde::Serialize;
-use wgpu_app::utils::persistent_window::PersistentWindow;
 
 const ORANGE: Color32 = Color32::from_rgb(255, 165, 0);
 
@@ -336,9 +336,8 @@ impl Player {
                     }
                 }
                 if let Some(time) = info.summary.timecreated {
-                    let age = Utc::now().naive_local().signed_duration_since(
-                        NaiveDateTime::from_timestamp_opt(time as i64, 0).unwrap(),
-                    );
+                    let age = Utc::now()
+                        .signed_duration_since(DateTime::from_timestamp(time as i64, 0).unwrap());
                     if age.num_days() < (70) {
                         ui.label(RichText::new("Y").color(Color32::RED));
                     } else if age.num_days() < (365) {
@@ -397,8 +396,8 @@ impl Player {
                             });
 
                             if let Some(time) = summary.timecreated {
-                                let age = Utc::now().naive_local().signed_duration_since(
-                                    NaiveDateTime::from_timestamp_opt(time as i64, 0).unwrap(),
+                                let age = Utc::now().signed_duration_since(
+                                    DateTime::from_timestamp(time as i64, 0).unwrap(),
                                 );
                                 let years = age.num_days() / 365;
                                 let days = age.num_days() - years * 365;
@@ -480,12 +479,9 @@ impl Player {
                                             .color(sbans.color),
                                     );
                                     for ban in &sbans.bans {
-                                        let dur = Utc::now().naive_local().signed_duration_since(
-                                            NaiveDateTime::from_timestamp_opt(
-                                                ban.BanTimestamp as i64,
-                                                0,
-                                            )
-                                            .unwrap(),
+                                        let dur = Utc::now().signed_duration_since(
+                                            DateTime::from_timestamp(ban.BanTimestamp as i64, 0)
+                                                .unwrap(),
                                         );
 
                                         ui.label(
