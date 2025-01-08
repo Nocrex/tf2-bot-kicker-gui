@@ -27,15 +27,13 @@ const COLOR_PALETTE: [egui::Color32; 21] = [
     egui::Color32::from_rgb(255, 255, 255),
 ];
 
-const INDICATOR_SYMBOLS: [char; 4] = ['■', '★', '▲', '◆'];
-
 /// Structure used to determine which players in the current server are friends
 pub struct Parties {
     players: Vec<Steamid32>,
 
     parties: Vec<HashSet<Steamid32>>,
 
-    pub graph: petgraph::Graph<String, (), petgraph::Directed>,
+    pub graph: petgraph::stable_graph::StableUnGraph<String, ()>,
 }
 
 impl Parties {
@@ -43,7 +41,7 @@ impl Parties {
         Parties {
             players: Vec::new(),
             parties: Vec::new(),
-            graph: petgraph::stable_graph::StableDiGraph::new(),
+            graph: petgraph::stable_graph::StableUnGraph::default(),
         }
     }
 
@@ -90,13 +88,21 @@ impl Parties {
         self.find_parties();
     }
 
-    pub fn get_player_party_indicator(&self, p: &Player) -> Option<(char, egui::Color32)> {
+    pub fn get_player_party_indicator(
+        &self,
+        p: &Player,
+        user: &str,
+    ) -> Option<(char, egui::Color32)> {
         self.parties
             .iter()
             .position(|party| party.contains(&p.steamid32))
             .map(|ind| {
                 (
-                    INDICATOR_SYMBOLS[ind / COLOR_PALETTE.len()],
+                    if self.parties[ind].contains(user) {
+                        '★'
+                    } else {
+                        '■'
+                    },
                     COLOR_PALETTE[ind % COLOR_PALETTE.len()],
                 )
             })
@@ -108,25 +114,12 @@ impl Parties {
             self.parties.clear();
             return;
         }
-        // TODO: replace with UndirectedAdapter when it gets released
-        let mut undir_graph = petgraph::Graph::new_undirected();
-        let mut node_map: HashMap<petgraph::graph::NodeIndex, petgraph::graph::NodeIndex> =
-            HashMap::new();
-        for node in self.graph.node_indices() {
-            node_map.insert(
-                node,
-                undir_graph.add_node(self.graph.node_weight(node).unwrap()),
-            );
-        }
-        for edge in self.graph.edge_indices() {
-            let (src, target) = self.graph.edge_endpoints(edge).unwrap();
-            undir_graph.update_edge(node_map[&src], node_map[&target], ());
-        }
-        let party_graph = petgraph::algo::condensation(undir_graph, true);
+
+        let party_graph = petgraph::algo::condensation(self.graph.clone().into(), true);
         assert_eq!(party_graph.edge_count(), 0);
         self.parties = party_graph
             .node_weights()
-            .map(|party| HashSet::from_iter(party.iter().cloned().cloned()))
+            .map(|party| HashSet::from_iter(party.iter().cloned()))
             .filter(|party| party.len() > 1)
             .collect();
     }
