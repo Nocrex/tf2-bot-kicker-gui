@@ -1,8 +1,8 @@
 use std::error::Error;
 
+use crate::gui::persistent_window::PersistentWindow;
 use clipboard::{ClipboardContext, ClipboardProvider};
 use egui::{ComboBox, Id, Label, RichText, SelectableLabel, Ui, Vec2};
-use wgpu_app::utils::persistent_window::PersistentWindow;
 
 use crate::{
     player_checker::PlayerRecord,
@@ -230,7 +230,7 @@ pub fn recent_players_window() -> PersistentWindow<State> {
                                     &state.settings.user,
                                     false,
                                     !state.settings.steamapi_key.is_empty(),
-                                    None
+                                    None,
                                 ) {
                                     action = Some((returned_action, player));
                                 }
@@ -267,7 +267,7 @@ pub fn recent_players_window() -> PersistentWindow<State> {
 /// Creates a dropdown combobox to select a player type, returns true if the value was changed
 pub fn player_type_combobox(id: &str, player_type: &mut PlayerType, ui: &mut Ui) -> bool {
     let mut changed = false;
-    ComboBox::from_id_source(id)
+    ComboBox::from_id_salt(id)
         .selected_text(player_type.rich_text())
         .show_ui(ui, |ui| {
             changed |= ui

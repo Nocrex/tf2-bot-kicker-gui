@@ -18,26 +18,20 @@ pub mod version;
 
 use chrono::{DateTime, Local};
 use crossbeam_channel::TryRecvError;
-use egui::{Align2, Vec2};
-use egui_dock::{DockArea, Tree};
-use egui_winit::{
-    egui,
-    winit::{
-        dpi::{PhysicalPosition, PhysicalSize},
-        window::{Icon, WindowBuilder},
-    },
-};
+use egui::{Align2, Pos2, Vec2};
+use egui_dock::{DockArea, DockState};
 use gui::GuiTab;
 use image::{EncodableLayout, ImageFormat};
+use settings::WindowState;
 
+use crate::gui::persistent_window::{PersistentWindow, PersistentWindowManager};
 use player_checker::{PLAYER_LIST, REGEX_LIST};
 use server::{player::PlayerType, *};
 use state::State;
 use std::{io::Cursor, time::SystemTime};
 use version::VersionResponse;
-use wgpu_app::utils::persistent_window::{PersistentWindow, PersistentWindowManager};
 
-fn main() {
+fn main() -> Result<(), eframe::Error> {
     env_logger::Builder::from_default_env()
         .filter_module("wgpu_core", log::LevelFilter::Warn)
         .filter_module("wgpu_hal", log::LevelFilter::Warn)
@@ -45,37 +39,53 @@ fn main() {
         .filter_module("naga", log::LevelFilter::Warn)
         .init();
 
-    let app = TF2BotKicker::new();
+    let mut app = TF2BotKicker::new();
 
-    let inner_size = PhysicalSize::new(
-        app.state.settings.window.width,
-        app.state.settings.window.height,
+    let inner_size = egui::Vec2::new(
+        app.state.settings.window.width as f32,
+        app.state.settings.window.height as f32,
     );
-    let outer_pos = PhysicalPosition::new(app.state.settings.window.x, app.state.settings.window.y);
+    let position = egui::Pos2::new(
+        app.state.settings.window.x as f32,
+        app.state.settings.window.y as f32,
+    );
 
-    let mut logo = image::io::Reader::new(Cursor::new(include_bytes!("../images/logo.png")));
+    let mut logo = image::ImageReader::new(Cursor::new(include_bytes!("../images/logo.png")));
     logo.set_format(ImageFormat::Png);
+    let logo = logo.decode().unwrap();
 
-    let wb = WindowBuilder::new()
-        .with_window_icon(Some(
-            Icon::from_rgba(
-                logo.decode().unwrap().into_rgba8().as_bytes().to_vec(),
-                512,
-                512,
-            )
-            .unwrap(),
-        ))
-        .with_title("TF2 Bot Kicker by Bash09")
-        .with_resizable(true)
-        .with_inner_size(inner_size)
-        .with_position(outer_pos);
-    wgpu_app::run(app, wb);
+    let icon = egui::IconData {
+        width: logo.width(),
+        height: logo.height(),
+        rgba: logo.as_rgba8().unwrap().as_bytes().to_vec(),
+    };
+
+    let no = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size(inner_size)
+            .with_position(position)
+            .with_icon(icon)
+            .with_title("TF2 Bot Kicker")
+            .with_resizable(true),
+        hardware_acceleration: eframe::HardwareAcceleration::Preferred,
+        renderer: eframe::Renderer::Wgpu,
+        ..Default::default()
+    };
+
+    eframe::run_native(
+        "TF2 Bot Kicker",
+        no,
+        Box::new(move |cc| {
+            app.init(cc);
+            Ok(Box::new(app))
+        }),
+    )
 }
 
 pub struct TF2BotKicker {
     state: State,
     windows: PersistentWindowManager<State>,
-    gui_tree: Tree<GuiTab>,
+    dock_state: DockState<GuiTab>,
 }
 
 impl Default for TF2BotKicker {
@@ -88,18 +98,16 @@ impl TF2BotKicker {
     // Create the application
     pub fn new() -> TF2BotKicker {
         let state = State::new();
-        let gui_tree = state.settings.saved_dock.clone();
+        let dock_state = state.settings.saved_dock.clone();
 
         Self {
             state,
             windows: PersistentWindowManager::new(),
-            gui_tree,
+            dock_state,
         }
     }
-}
 
-impl wgpu_app::Application for TF2BotKicker {
-    fn init(&mut self, _ctx: &mut wgpu_app::context::Context) {
+    fn init(&mut self, _cc: &eframe::CreationContext<'_>) {
         self.state.refresh_timer.reset();
         self.state.kick_timer.reset();
         self.state.alert_timer.reset();
@@ -137,18 +145,26 @@ impl wgpu_app::Application for TF2BotKicker {
             }
         }
     }
+}
 
-    fn update(
-        &mut self,
-        _t: &wgpu_app::Timer,
-        ctx: &mut wgpu_app::context::Context,
-    ) -> Result<(), wgpu::SurfaceError> {
+impl eframe::App for TF2BotKicker {
+    fn update(&mut self, gui_ctx: &egui::Context, frame: &mut eframe::Frame) {
         let TF2BotKicker {
             state,
             windows,
-            gui_tree,
+            dock_state,
         } = self;
 
+        gui_ctx.request_repaint_after_secs(0.1);
+        // Moved updating settings windowstate here, since the on_exit handler doesn't have access to the context
+        gui_ctx.input(|i| {
+            state.settings.window = WindowState {
+                width: i.screen_rect.width(),
+                height: i.screen_rect.height(),
+                x: i.screen_rect.min.x,
+                y: i.screen_rect.min.y,
+            };
+        });
         // Check latest version
         if let Some(latest) = &mut state.latest_version {
             match latest.try_recv() {
@@ -219,7 +235,7 @@ impl wgpu_app::Application for TF2BotKicker {
         let refresh = state.refresh_timer.go(state.settings.refresh_period);
 
         if refresh.is_none() {
-            return Ok(());
+            return;
         }
 
         state.kick_timer.go(state.settings.kick_period);
@@ -235,7 +251,7 @@ impl wgpu_app::Application for TF2BotKicker {
                 && state.settings.close_on_disconnect
             {
                 log::debug!("Lost connection from TF2, closing program.");
-                self.close(ctx);
+                self.on_exit(None);
                 std::process::exit(0);
             }
 
@@ -274,27 +290,22 @@ impl wgpu_app::Application for TF2BotKicker {
         }
 
         // Render *****************88
-        let output = ctx.wgpu_state.surface.get_current_texture()?;
-        ctx.egui.render(&mut ctx.wgpu_state, &output, |gui_ctx| {
-            gui::render_top_panel(gui_ctx, state, gui_tree);
-            DockArea::new(gui_tree).show(gui_ctx, state);
+        gui::render_top_panel(gui_ctx, state, dock_state.main_surface_mut());
+        DockArea::new(dock_state).show(gui_ctx, state);
 
-            // Get new persistent windows
-            if !state.new_persistent_windows.is_empty() {
-                let mut new_windows = Vec::new();
-                std::mem::swap(&mut new_windows, &mut state.new_persistent_windows);
-                for w in new_windows {
-                    windows.push(w);
-                }
+        // Get new persistent windows
+        if !state.new_persistent_windows.is_empty() {
+            let mut new_windows = Vec::new();
+            std::mem::swap(&mut new_windows, &mut state.new_persistent_windows);
+            for w in new_windows {
+                windows.push(w);
             }
-            windows.render(state, gui_ctx);
-        });
-        output.present();
+        }
 
-        Ok(())
+        windows.render(state, gui_ctx);
     }
 
-    fn close(&mut self, ctx: &wgpu_app::context::Context) {
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         if let Err(e) = self.state.player_checker.save_players(PLAYER_LIST) {
             log::error!("Failed to save players: {:?}", e);
         }
@@ -302,27 +313,11 @@ impl wgpu_app::Application for TF2BotKicker {
             log::error!("Failed to save regexes: {:?}", e);
         }
 
-        let size = ctx.wgpu_state.window.inner_size();
-        let position = ctx.wgpu_state.window.outer_position();
-
         let settings = &mut self.state.settings;
-        settings.window.width = size.width;
-        settings.window.height = size.height;
-        if let Ok(pos) = position {
-            settings.window.x = pos.x;
-            settings.window.y = pos.y;
-        }
-        settings.saved_dock = self.gui_tree.clone();
+        settings.saved_dock = self.dock_state.clone();
 
         if let Err(e) = settings.export() {
             log::error!("Failed to save settings: {:?}", e);
         }
-    }
-
-    fn handle_event(
-        &mut self,
-        _: &mut wgpu_app::context::Context,
-        _: &egui_winit::winit::event::Event<()>,
-    ) {
     }
 }

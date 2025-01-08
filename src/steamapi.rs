@@ -5,7 +5,7 @@ use egui::Id;
 use egui_extras::RetainedImage;
 use serde::Deserialize;
 use steam_api::structs::{summaries, friends, bans};
-use wgpu_app::utils::persistent_window::PersistentWindow;
+use crate::gui::persistent_window::PersistentWindow;
 use crate::steamhistory::{sourcebans, SHBans};
 
 use crate::state::State;

@@ -1,4 +1,4 @@
-use egui_dock::{NodeIndex, Tree};
+use egui_dock::{DockState, NodeIndex};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -7,10 +7,10 @@ use crate::gui::GuiTab;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct WindowState {
-    pub width: u32,
-    pub height: u32,
-    pub x: i32,
-    pub y: i32,
+    pub width: f32,
+    pub height: f32,
+    pub x: f32,
+    pub y: f32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -54,20 +54,22 @@ pub struct Settings {
 
     pub launch_tf2: bool,
     pub close_on_disconnect: bool,
-    pub saved_dock: Tree<GuiTab>,
+    pub saved_dock: DockState<GuiTab>,
 }
 
 impl Settings {
     pub fn new() -> Settings {
-        let mut gui_tree = Tree::new(vec![GuiTab::Players]);
-        gui_tree.split_left(NodeIndex::root(), 0.2, vec![GuiTab::Settings]);
+        let mut dock_state = DockState::new(vec![GuiTab::Players]);
+        dock_state
+            .main_surface_mut()
+            .split_left(NodeIndex::root(), 0.2, vec![GuiTab::Settings]);
 
         Settings {
             window: WindowState {
-                width: 1100,
-                height: 500,
-                x: 200,
-                y: 200,
+                width: 1100.0,
+                height: 500.0,
+                x: 200.0,
+                y: 200.0,
             },
 
             user: String::from("U:1:XXXXXXX"),
@@ -106,7 +108,7 @@ impl Settings {
 
             launch_tf2: false,
             close_on_disconnect: false,
-            saved_dock: gui_tree,
+            saved_dock: dock_state,
         }
     }
 
@@ -122,17 +124,17 @@ impl Settings {
         let mut set = Settings::new();
 
         if let Value::Object(window) = &json["window"] {
-            if let Some(width) = window["width"].as_i64() {
-                set.window.width = width.try_into().unwrap_or(set.window.width);
+            if let Some(width) = window["width"].as_f64() {
+                set.window.width = width as f32;
             }
-            if let Some(height) = window["height"].as_i64() {
-                set.window.height = height.try_into().unwrap_or(set.window.height);
+            if let Some(height) = window["height"].as_f64() {
+                set.window.height = height as f32;
             }
-            if let Some(x) = window["x"].as_i64() {
-                set.window.x = x.try_into().unwrap_or(set.window.x);
+            if let Some(x) = window["x"].as_f64() {
+                set.window.x = x as f32;
             }
-            if let Some(y) = window["y"].as_i64() {
-                set.window.y = y.try_into().unwrap_or(set.window.y);
+            if let Some(y) = window["y"].as_f64() {
+                set.window.y = y as f32;
             }
         }
 
@@ -141,7 +143,7 @@ impl Settings {
             .as_str()
             .unwrap_or(&set.steamapi_key)
             .to_string();
-        
+
         set.steamhistory_key = json["steamhistory_key"]
             .as_str()
             .unwrap_or(&set.steamhistory_key)
@@ -232,7 +234,8 @@ impl Settings {
             .as_bool()
             .unwrap_or(set.close_on_disconnect);
 
-        set.saved_dock = Tree::<GuiTab>::deserialize(&json["saved_dock"]).unwrap_or(set.saved_dock);
+        set.saved_dock =
+            DockState::<GuiTab>::deserialize(&json["saved_dock"]).unwrap_or(set.saved_dock);
 
         Ok(set)
     }

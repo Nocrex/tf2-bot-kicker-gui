@@ -1,7 +1,7 @@
 use std::error::Error;
 
+use crate::gui::persistent_window::PersistentWindow;
 use crossbeam_channel::{Receiver, Sender};
-use wgpu_app::utils::persistent_window::PersistentWindow;
 
 use crate::{
     gui,
@@ -44,6 +44,7 @@ pub struct State {
 
     pub ui_context_menu_open: Option<usize>,
     pub new_persistent_windows: Vec<PersistentWindow<State>>,
+    pub friends_graph: egui_graphs::Graph<String, (), petgraph::Undirected>,
 }
 
 impl Default for State {
@@ -61,6 +62,7 @@ impl egui_dock::TabViewer for State {
             gui::GuiTab::Players => gui::render_players(ui, self),
             gui::GuiTab::ChatLog => gui::render_chat(ui, self),
             gui::GuiTab::DeathLog => gui::render_kills(ui, self),
+            gui::GuiTab::FriendGraph => gui::render_friends_graph(ui, self),
         }
     }
 
@@ -70,9 +72,19 @@ impl egui_dock::TabViewer for State {
             gui::GuiTab::Players => "Players",
             gui::GuiTab::ChatLog => "Chat",
             gui::GuiTab::DeathLog => "Kills",
+            gui::GuiTab::FriendGraph => "Friend Graph",
         }
         .into()
     }
+}
+
+fn at_least_one(
+    mut graph: petgraph::stable_graph::StableGraph<String, (), petgraph::Undirected>,
+) -> petgraph::stable_graph::StableGraph<String, (), petgraph::Undirected> {
+    if graph.node_count() == 0 {
+        graph.add_node("empty".to_owned());
+    }
+    graph
 }
 
 impl State {
@@ -152,6 +164,9 @@ impl State {
 
             ui_context_menu_open: None,
             new_persistent_windows: Vec::new(),
+            friends_graph: egui_graphs::Graph::from(&at_least_one(
+                petgraph::stable_graph::StableGraph::default(),
+            )),
         }
     }
 
@@ -176,6 +191,8 @@ impl State {
         ));
 
         self.server.refresh();
+        self.friends_graph =
+            egui_graphs::Graph::from(&at_least_one(self.server.parties.graph.clone()));
     }
 
     pub fn handle_messages(&mut self) {
