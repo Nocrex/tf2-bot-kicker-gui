@@ -549,7 +549,10 @@ fn render_players_internal(ui: &mut Ui, state: &mut State) {
                         &state.settings.user,
                         true,
                         !state.settings.steamapi_key.is_empty(),
-                        state.server.parties.get_player_party_indicator(player),
+                        state
+                            .server
+                            .parties
+                            .get_player_party_indicator(player, &state.settings.user),
                     ) {
                         action = Some((returned_action, player));
                     }
@@ -567,7 +570,10 @@ fn render_players_internal(ui: &mut Ui, state: &mut State) {
                         &state.settings.user,
                         true,
                         !state.settings.steamapi_key.is_empty(),
-                        state.server.parties.get_player_party_indicator(player),
+                        state
+                            .server
+                            .parties
+                            .get_player_party_indicator(player, &state.settings.user),
                     ) {
                         action = Some((returned_action, player));
                     }
