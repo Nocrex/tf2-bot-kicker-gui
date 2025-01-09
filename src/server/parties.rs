@@ -101,7 +101,7 @@ impl Parties {
                     if self.parties[ind].contains(user) {
                         '★'
                     } else {
-                        '■'
+                        '●'
                     },
                     COLOR_PALETTE[ind % COLOR_PALETTE.len()],
                 )

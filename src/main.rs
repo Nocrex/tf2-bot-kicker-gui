@@ -18,7 +18,7 @@ pub mod version;
 
 use chrono::{DateTime, Local};
 use crossbeam_channel::TryRecvError;
-use egui::{Align2, Pos2, Vec2};
+use egui::{Align2, Vec2};
 use egui_dock::{DockArea, DockState};
 use gui::GuiTab;
 use image::{EncodableLayout, ImageFormat};
@@ -107,10 +107,36 @@ impl TF2BotKicker {
         }
     }
 
-    fn init(&mut self, _cc: &eframe::CreationContext<'_>) {
+    fn init(&mut self, cc: &eframe::CreationContext<'_>) {
         self.state.refresh_timer.reset();
         self.state.kick_timer.reset();
         self.state.alert_timer.reset();
+
+        let font_dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/fonts");
+
+        let mut fontdefs = egui::FontDefinitions::default();
+
+        for font in font_dir.files() {
+            let name = font
+                .path()
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_owned();
+
+            fontdefs
+                .font_data
+                .insert(name.clone(), egui::FontData::from_static(font.contents()));
+
+            fontdefs
+                .families
+                .get_mut(&egui::FontFamily::Proportional)
+                .unwrap()
+                .push(name);
+        }
+
+        cc.egui_ctx.set_fonts(fontdefs);
 
         self.state.latest_version = Some(VersionResponse::request_latest_version());
         if !self.state.settings.ignore_no_api_key && self.state.settings.steamapi_key.is_empty() {

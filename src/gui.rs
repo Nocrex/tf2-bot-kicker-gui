@@ -297,7 +297,7 @@ pub fn render_chat(ui: &mut Ui, state: &mut State) {
                         ui.label(&msg.player_name);
                     }
 
-                    ui.label(format!(": {}", msg.message));
+                    ui.add(egui::Label::new(format!(": {}", msg.message)).wrap());
                 });
             }
         },
