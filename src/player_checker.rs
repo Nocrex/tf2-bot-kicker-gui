@@ -17,7 +17,8 @@ use super::player::Player;
 
 pub const REGEX_LIST: &str = "cfg/regx.txt";
 pub const PLAYER_LIST: &str = "cfg/playerlist.json";
-pub const HACKERPOLICE_LIST: &str = "https://raw.githubusercontent.com/AveraFox/Tom/refs/heads/main/reported_ids.txt";
+pub const HACKERPOLICE_LIST: &str =
+    "https://raw.githubusercontent.com/AveraFox/Tom/refs/heads/main/reported_ids.txt";
 
 #[derive(Debug, Serialize, Clone)]
 pub struct PlayerRecord {
@@ -29,6 +30,7 @@ pub struct PlayerRecord {
 pub struct PlayerChecker {
     pub bots_regx: Vec<Regex>,
     pub players: HashMap<String, PlayerRecord>,
+    pub external_players: HashMap<String, PlayerRecord>,
 }
 
 impl Default for PlayerChecker {
@@ -43,6 +45,7 @@ impl PlayerChecker {
             bots_regx: Vec::new(),
 
             players: HashMap::new(),
+            external_players: HashMap::new(),
         }
     }
 
@@ -60,7 +63,10 @@ impl PlayerChecker {
     /// Loads a player's record from the persistent record if it exists and restores
     /// their data. e.g. marking the player as a bot or cheater or just
     pub fn check_player_steamid(&self, steamid: &Steamid32) -> Option<PlayerRecord> {
-        self.players.get(steamid).cloned()
+        self.players
+            .get(steamid)
+            .cloned()
+            .or_else(|| self.external_players.get(steamid).cloned())
     }
 
     /// Inserts the player into the saved record of players
@@ -82,15 +88,14 @@ impl PlayerChecker {
         &mut self,
         filename: &str,
         as_player_type: PlayerType,
+        saved: bool,
     ) -> Result<(), std::io::Error> {
-        
-
         let mut file = File::open(filename)?;
-        
+
         let mut contents: String = String::new();
         file.read_to_string(&mut contents)?;
 
-        self.read_from_steamid_list_string(&contents, as_player_type, filename);
+        self.read_from_steamid_list_string(&contents, as_player_type, filename, saved);
 
         Ok(())
     }
@@ -99,17 +104,23 @@ impl PlayerChecker {
         &mut self,
         contents: &str,
         as_player_type: PlayerType,
-        filename: &str
+        filename: &str,
+        saved: bool,
     ) {
         let reg = Regex::new(r#"\[?(?P<uuid>U:\d:\d+)\]?"#).unwrap();
         let reg64 = Regex::new(r#"7656\d{13}"#).unwrap();
+        let pl: &mut HashMap<String, PlayerRecord> = if saved {
+            &mut self.players
+        } else {
+            &mut self.external_players
+        };
         for m in reg.find_iter(&contents) {
             match reg.captures(m.as_str()) {
                 None => {}
                 Some(c) => {
                     let steamid = c["uuid"].to_string();
 
-                    if self.players.contains_key(&steamid) {
+                    if pl.contains_key(&steamid) {
                         continue;
                     } else {
                         let record = PlayerRecord {
@@ -117,26 +128,26 @@ impl PlayerChecker {
                             player_type: as_player_type,
                             notes: format!("Imported from {} as {:?}", filename, as_player_type),
                         };
-                        self.players.insert(record.steamid.clone(), record);
+                        pl.insert(record.steamid.clone(), record);
                     }
                 }
             }
         }
 
-        for m in reg64.find_iter(&contents){
+        for m in reg64.find_iter(&contents) {
             let steamid = steamid_64_to_32(&m.as_str().to_owned());
 
-            if steamid.is_err() || self.players.contains_key(steamid.as_ref().unwrap())  {
+            if steamid.is_err() || pl.contains_key(steamid.as_ref().unwrap()) {
                 continue;
             }
 
-            let record = PlayerRecord{
+            let record = PlayerRecord {
                 steamid: steamid.unwrap(),
                 player_type: as_player_type,
                 notes: format!("Imported from {} as {:?}", filename, as_player_type),
             };
 
-            self.players.insert(record.steamid.clone(), record);
+            pl.insert(record.steamid.clone(), record);
         }
     }
 

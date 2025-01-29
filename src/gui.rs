@@ -121,7 +121,7 @@ pub fn render_top_panel(gui_ctx: &egui::Context, state: &mut State, gui_tree: &m
 
                         match state
                             .player_checker
-                            .read_from_steamid_list(&dir, player_type)
+                            .read_from_steamid_list(&dir, player_type, true)
                         {
                             Ok(_) => {
                                 log::info!(

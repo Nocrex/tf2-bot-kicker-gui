@@ -83,8 +83,12 @@ pub fn saved_players_window() -> PersistentWindow<State> {
                     ui.separator();
 
                     // Actual player area
-                    let mut players: Vec<&mut PlayerRecord> =
-                        state.player_checker.players.values_mut().collect();
+                    let mut players: Vec<&mut PlayerRecord> = state
+                        .player_checker
+                        .players
+                        .values_mut()
+                        .chain(state.player_checker.external_players.values_mut())
+                        .collect();
                     players.retain(|p| {
                         if let Some(filter) = filter {
                             if p.player_type != filter {
@@ -148,7 +152,11 @@ pub fn saved_players_window() -> PersistentWindow<State> {
             state.server.remove_player(&steamid);
         } else if let Some(Action::Edit(steamid)) = action {
             windows.push(edit_player_window(
-                state.player_checker.players.get(&steamid).unwrap().clone(),
+                state
+                    .player_checker
+                    .check_player_steamid(&steamid)
+                    .unwrap()
+                    .clone(),
             ));
         }
 

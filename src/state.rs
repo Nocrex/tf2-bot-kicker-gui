@@ -127,6 +127,7 @@ impl State {
                     &ids,
                     PlayerType::Cheater,
                     &format!("hackerpolice list ({0})", chrono::Local::now().to_rfc3339()),
+                    false,
                 );
                 log::info!("Successfully loaded hackerpolice list.");
             }
